@@ -1,0 +1,28 @@
+{
+  "name": "multiplayer-poker",
+  "version": "1.0.0",
+  "description": "Multiplayer Texas Hold'em poker game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "8.21.1"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Andrewdt97/devops_assignment_4.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/Andrewdt97/devops_assignment_4/issues"
+  },
+  "homepage": "https://github.com/Andrewdt97/devops_assignment_4#readme"
+}

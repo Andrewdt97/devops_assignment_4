@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poker Game</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Landing Screen -->
+  <div id="landing" class="screen">
+    <h1>♠ Multiplayer Poker ♥</h1>
+    <div class="landing-form">
+      <input type="text" id="displayName" placeholder="Your display name" maxlength="12" autocomplete="off">
+      <div class="landing-actions">
+        <button id="createBtn">Create Room</button>
+        <div class="join-group">
+          <input type="text" id="roomCodeInput" placeholder="Room code" maxlength="6" autocomplete="off">
+          <button id="joinBtn">Join Room</button>
+        </div>
+      </div>
+    </div>
+    <div id="errorMsg" class="error-msg"></div>
+  </div>
+
+  <!-- Waiting Room -->
+  <div id="waitingRoom" class="screen hidden">
+    <h2>Room: <span id="roomCodeDisplay"></span></h2>
+    <button id="copyCode" title="Copy room code">📋 Copy</button>
+    <div id="playerList" class="player-list"></div>
+    <button id="startBtn" class="hidden">Start Game</button>
+    <p id="waitingMsg">Waiting for players...</p>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="screen hidden">
+    <div class="game-info">
+      <span id="blindInfo"></span>
+      <span id="handInfo"></span>
+      <span id="potInfo"></span>
+    </div>
+    <div class="table">
+      <div class="community-cards" id="communityCards"></div>
+      <div class="pot-display" id="potDisplay"></div>
+      <div id="seats" class="seats"></div>
+    </div>
+    <div class="player-hand" id="playerHand"></div>
+    <div class="actions" id="actions"></div>
+    <div id="timerBar" class="timer-bar hidden"><div id="timerFill" class="timer-fill"></div></div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="screen hidden">
+    <h2>🏆 Game Over</h2>
+    <div id="winnerAnnouncement"></div>
+    <div id="finalStandings"></div>
+    <button id="leaveBtn">Leave</button>
+  </div>
+
+  <!-- Notification -->
+  <div id="notification" class="notification hidden"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

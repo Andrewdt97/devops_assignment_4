@@ -1,0 +1,4 @@
+Design a multiplayer, browser based poker game. There is no technology or framework preference but there should be a backend server to prevent cheating and store a record.
+
+"Implement the multiplayer poker game following the plan in
+  .agents/planning/2026-07-16-multiplayer-poker/implementation/plan.md"

@@ -1,0 +1,1 @@
+{"ts":"2026-07-17T03:17:52.189018+00:00","iteration":0,"hat":"loop","topic":"task.start","triggered":"planner","payload":"Implement the multiplayer poker game following the plan in\n  .agents/planning/2026-07-16-multiplayer-poker/implementation/plan.md. The tests run with node --test test/ currently hand forever so be way of running them without fixing."}
