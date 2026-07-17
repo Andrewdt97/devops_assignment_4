@@ -61,7 +61,7 @@ function joinRoom(roomCode, playerId, ws, displayName) {
     ws.send(JSON.stringify({ type: 'error', message: 'Game already in progress' }));
     return null;
   }
-  if (room.players.length >= 6) {
+  if (room.players.length >= 8) {
     ws.send(JSON.stringify({ type: 'error', message: 'Room is full' }));
     return null;
   }
@@ -127,6 +127,14 @@ function rejoinRoom(roomCode, playerId, ws) {
   player.ws = ws;
   player.sittingOut = false;
   sendFilteredState(room, player);
+
+  // If it's this player's turn, re-send the yourTurn message so they see action buttons
+  const playerIndex = room.players.indexOf(player);
+  if (playerIndex === room.activePlayerIndex && room.phase !== 'waiting' && room.phase !== 'gameOver' && room.phase !== 'showdown') {
+    // Defer to allow game-engine to send yourTurn (avoid circular dep)
+    room._pendingTurnResend = playerId;
+  }
+
   return room;
 }
 

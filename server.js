@@ -28,7 +28,21 @@ function handleMessage(ws, playerId, msg) {
     }
 
     case 'rejoin':
-      rejoinRoom(msg.roomCode, playerId, ws);
+      rejoinRoom(msg.roomCode, msg.playerId || playerId, ws);
+      // After rejoin, check if this player needs a turn notification resent
+      {
+        const room = getRoomByPlayerId(msg.playerId || playerId);
+        if (room && room._pendingTurnResend) {
+          delete room._pendingTurnResend;
+          const { getValidActions, TURN_TIMEOUT_MS } = require('./game-engine');
+          const validActions = getValidActions(room);
+          ws.send(JSON.stringify({
+            type: 'yourTurn',
+            validActions,
+            timeRemaining: TURN_TIMEOUT_MS / 1000,
+          }));
+        }
+      }
       break;
 
     case 'start': {
@@ -79,7 +93,7 @@ function createApp() {
   const clients = new Map();
 
   wss.on('connection', (ws) => {
-    const playerId = crypto.randomUUID();
+    let playerId = crypto.randomUUID();
     clients.set(playerId, ws);
 
     // Send welcome message
@@ -92,6 +106,13 @@ function createApp() {
       } catch (e) {
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
         return;
+      }
+
+      // On rejoin, adopt the old playerId so disconnect tracking works correctly
+      if (msg.type === 'rejoin' && msg.playerId && msg.playerId !== playerId) {
+        clients.delete(playerId);
+        playerId = msg.playerId;
+        clients.set(playerId, ws);
       }
 
       handleMessage(ws, playerId, msg);

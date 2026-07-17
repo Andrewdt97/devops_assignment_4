@@ -71,8 +71,6 @@ function startGame(room) {
 }
 
 function dealHand(room) {
-  const activePlayers = room.players.filter((p) => p.chips > 0 || p.allIn);
-
   // Reset per-hand state
   room.deck = shuffleDeck(createDeck());
   room.communityCards = [];
@@ -83,6 +81,7 @@ function dealHand(room) {
   for (const p of room.players) {
     p.cards = null;
     p.currentBet = 0;
+    p.totalBetThisHand = 0;
     p.folded = p.chips === 0;
     p.allIn = false;
     p.hasActed = false;
@@ -140,6 +139,7 @@ function postBlind(room, playerIndex, amount) {
   const actual = Math.min(amount, player.chips);
   player.chips -= actual;
   player.currentBet = actual;
+  player.totalBetThisHand = (player.totalBetThisHand || 0) + actual;
   room.pots[0].amount += actual;
   if (player.chips === 0) {
     player.allIn = true;
@@ -236,9 +236,8 @@ function handleAction(room, playerId, msg) {
   const { action, amount } = msg;
   const validActions = getValidActions(room);
 
-  // Map action to basic type for validation
-  const actionBase = action === 'bet' || action === 'raise' ? action : action;
-  if (!validActions.includes(actionBase) && action !== 'allIn') {
+  // Validate action is allowed
+  if (!validActions.includes(action) && action !== 'allIn') {
     return { error: `Invalid action: ${action}` };
   }
 
@@ -261,6 +260,7 @@ function handleAction(room, playerId, msg) {
       const toCall = Math.min(room.currentBet - player.currentBet, player.chips);
       player.chips -= toCall;
       player.currentBet += toCall;
+      player.totalBetThisHand = (player.totalBetThisHand || 0) + toCall;
       room.pots[0].amount += toCall;
       if (player.chips === 0) player.allIn = true;
       player.hasActed = true;
@@ -268,10 +268,12 @@ function handleAction(room, playerId, msg) {
     }
 
     case 'bet': {
-      const betAmount = Number(amount) || getBlinds(room.blindLevel).big;
+      const minBet = getBlinds(room.blindLevel).big;
+      const betAmount = Math.max(Number(amount) || minBet, minBet);
       const actual = Math.min(betAmount, player.chips);
       player.chips -= actual;
       player.currentBet += actual;
+      player.totalBetThisHand = (player.totalBetThisHand || 0) + actual;
       room.pots[0].amount += actual;
       room.currentBet = player.currentBet;
       room.lastRaiseSize = actual;
@@ -285,10 +287,12 @@ function handleAction(room, playerId, msg) {
     case 'raise': {
       const minRaise = room.lastRaiseSize || getBlinds(room.blindLevel).big;
       const toCall = room.currentBet - player.currentBet;
-      const raiseAmount = Number(amount) || (toCall + minRaise);
+      const minRaiseTotal = toCall + minRaise;
+      const raiseAmount = Math.max(Number(amount) || minRaiseTotal, minRaiseTotal);
       const actual = Math.min(raiseAmount, player.chips);
       player.chips -= actual;
       player.currentBet += actual;
+      player.totalBetThisHand = (player.totalBetThisHand || 0) + actual;
       room.pots[0].amount += actual;
       room.lastRaiseSize = player.currentBet - room.currentBet;
       room.currentBet = player.currentBet;
@@ -301,6 +305,7 @@ function handleAction(room, playerId, msg) {
     case 'allIn': {
       const allInAmount = player.chips;
       player.currentBet += allInAmount;
+      player.totalBetThisHand = (player.totalBetThisHand || 0) + allInAmount;
       room.pots[0].amount += allInAmount;
       player.chips = 0;
       player.allIn = true;
@@ -541,16 +546,11 @@ function awardPotToLastPlayer(room, winner) {
 
 function calculatePots(room) {
   const nonFolded = room.players.filter((p) => !p.folded);
-  const allPlayers = room.players.filter((p) => p.currentBet > 0 || p.allIn || !p.folded);
 
-  // Collect all bets contributed this hand
-  // We need to track total contributed — use currentBet as proxy
-  // Actually, let's use the simpler approach: total pot split by all-in thresholds
-  
-  // Get all unique bet levels from all-in players
+  // Get all unique bet levels from all-in players (using total bet this hand)
   const allInAmounts = room.players
     .filter((p) => p.allIn && !p.folded)
-    .map((p) => p.currentBet)
+    .map((p) => p.totalBetThisHand || 0)
     .sort((a, b) => a - b);
 
   if (allInAmounts.length === 0) {
@@ -559,17 +559,17 @@ function calculatePots(room) {
     return [{ amount: totalPot, eligible: nonFolded.map((p) => p.id) }];
   }
 
-  // Create pots at each threshold
+  // Create pots at each threshold using totalBetThisHand
   const pots = [];
   let prevLevel = 0;
 
-  const allContributors = room.players.filter((p) => p.currentBet > 0);
+  const allContributors = room.players.filter((p) => (p.totalBetThisHand || 0) > 0);
   const uniqueLevels = [...new Set(allInAmounts)];
 
   for (const level of uniqueLevels) {
     const contribution = level - prevLevel;
-    const eligible = nonFolded.filter((p) => p.currentBet >= level).map((p) => p.id);
-    const contributors = allContributors.filter((p) => p.currentBet >= level);
+    const eligible = nonFolded.filter((p) => (p.totalBetThisHand || 0) >= level).map((p) => p.id);
+    const contributors = allContributors.filter((p) => (p.totalBetThisHand || 0) >= level);
     const potAmount = contribution * contributors.length;
     if (potAmount > 0) {
       pots.push({ amount: potAmount, eligible });
@@ -580,10 +580,10 @@ function calculatePots(room) {
   // Remaining pot for players who bet more than the highest all-in
   const maxAllIn = Math.max(...allInAmounts);
   const remaining = allContributors
-    .filter((p) => p.currentBet > maxAllIn)
-    .reduce((sum, p) => sum + (p.currentBet - maxAllIn), 0);
+    .filter((p) => (p.totalBetThisHand || 0) > maxAllIn)
+    .reduce((sum, p) => sum + ((p.totalBetThisHand || 0) - maxAllIn), 0);
   if (remaining > 0) {
-    const eligible = nonFolded.filter((p) => p.currentBet > maxAllIn).map((p) => p.id);
+    const eligible = nonFolded.filter((p) => (p.totalBetThisHand || 0) > maxAllIn).map((p) => p.id);
     pots.push({ amount: remaining, eligible });
   }
 
@@ -606,19 +606,27 @@ function startNextHand(room) {
 
   // Eliminate players with 0 chips
   const eliminated = room.players.filter((p) => p.chips === 0);
+  const remainingCount = room.players.length - eliminated.length;
+
+  // Assign positions: all players eliminated in same hand share the next position
+  // Position = remainingCount + 1 (e.g., if 3 remain, eliminated get position 4)
+  const eliminationPosition = remainingCount + 1;
   for (const p of eliminated) {
     room.spectators.push({
       id: p.id,
       ws: p.ws,
       displayName: p.displayName,
-      finalPosition: room.players.length, // Will be recalculated
+      finalPosition: eliminationPosition,
     });
 
-    // Record final position (higher number = eliminated earlier)
     if (room.sessionId) {
-      db.setFinalPosition(room.sessionId, p.id, room.players.length);
+      db.setFinalPosition(room.sessionId, p.id, eliminationPosition);
     }
   }
+
+  // Track current dealer's ID before removing players so we can find them after
+  const currentDealerId = room.players[room.dealerIndex] ? room.players[room.dealerIndex].id : null;
+
   room.players = room.players.filter((p) => p.chips > 0);
 
   // Check game over
@@ -653,10 +661,14 @@ function startNextHand(room) {
     return;
   }
 
-  // Rotate dealer
-  room.dealerIndex = room.dealerIndex % room.players.length;
-  const nextDealer = (room.dealerIndex + 1) % room.players.length;
-  room.dealerIndex = nextDealer;
+  // Rotate dealer - find where the old dealer is (or the next player clockwise)
+  let newDealerIndex = room.players.findIndex((p) => p.id === currentDealerId);
+  if (newDealerIndex === -1) {
+    // Dealer was eliminated; the next player in position takes over
+    newDealerIndex = room.dealerIndex % room.players.length;
+  }
+  // Advance dealer to next player
+  room.dealerIndex = (newDealerIndex + 1) % room.players.length;
 
   // Blind escalation
   if (room.handsThisLevel >= HANDS_PER_LEVEL) {
@@ -684,7 +696,7 @@ function handleDisconnect(room, playerId) {
     return;
   }
 
-  // Game in progress
+  // Game in progress - check players first
   const player = room.players.find((p) => p.id === playerId);
   if (player) {
     player.sittingOut = true;
@@ -695,6 +707,13 @@ function handleDisconnect(room, playerId) {
     if (playerIndex === room.activePlayerIndex) {
       handleAction(room, playerId, { type: 'action', action: 'fold' });
     }
+    return;
+  }
+
+  // Check spectators - clear stale ws reference
+  const spectator = room.spectators.find((p) => p.id === playerId);
+  if (spectator) {
+    spectator.ws = null;
   }
 }
 
