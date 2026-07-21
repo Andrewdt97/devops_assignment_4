@@ -3,3 +3,5 @@ Design a multiplayer, browser based poker game. There is no technology or framew
 "Implement the multiplayer poker game following the plan in .agents/planning/2026-07-16-multiplayer-poker/implementation/plan.md"
 
 Find any bugs or functional issues with this code base. Fix anything you find.
+
+Implement the chat feature design in /Users/andrewthomas/misc/devops/devops_assignment_4/.agents/planning/2026-07-20-room-chat
