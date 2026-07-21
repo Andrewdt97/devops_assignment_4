@@ -2,7 +2,7 @@
 
 const { bestHand, compareHands } = require('./hand-evaluator');
 const { broadcastRoomState } = require('./room-manager');
-const { broadcastSystemMessage } = require('./chat');
+const { broadcastSystemMessage, clearRateLimit } = require('./chat');
 const db = require('./db');
 
 const STARTING_SMALL_BLIND = 10;
@@ -694,13 +694,19 @@ function handleDisconnect(room, playerId) {
   if (!room) return;
 
   if (room.phase === 'waiting') {
+    // Capture name before removal
+    const disconnectedPlayer = room.players.find((p) => p.id === playerId);
+    const disconnectedName = disconnectedPlayer ? disconnectedPlayer.displayName : 'A player';
+
     // Remove from room
     room.players = room.players.filter((p) => p.id !== playerId);
+    clearRateLimit(playerId);
     if (room.players.length === 0) {
       const { rooms } = require('./room-manager');
       rooms.delete(room.code);
       return;
     }
+    broadcastSystemMessage(room, `${disconnectedName} disconnected`);
     broadcastRoomState(room);
     return;
   }

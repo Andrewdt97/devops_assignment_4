@@ -494,7 +494,10 @@
   // Chat event listeners
   els.chatSendBtn.addEventListener('click', sendChatMessage);
   els.chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendChatMessage();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendChatMessage();
+    }
   });
 
   // --- Init ---

@@ -107,4 +107,8 @@ function checkRateLimit(playerId) {
   return true;
 }
 
-module.exports = { handleChatMessage, broadcastSystemMessage };
+function clearRateLimit(playerId) {
+  rateLimitMap.delete(playerId);
+}
+
+module.exports = { handleChatMessage, broadcastSystemMessage, clearRateLimit };

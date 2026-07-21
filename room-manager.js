@@ -1,7 +1,7 @@
 'use strict';
 
 const rooms = new Map();
-const { broadcastSystemMessage } = require('./chat');
+const { broadcastSystemMessage, clearRateLimit } = require('./chat');
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -100,6 +100,9 @@ function leaveRoom(roomCode, playerId) {
 
   room.players = room.players.filter((p) => p.id !== playerId);
   room.spectators = room.spectators.filter((p) => p.id !== playerId);
+
+  // Clean up rate limit entry for the leaving player
+  clearRateLimit(playerId);
 
   if (room.players.length === 0 && room.spectators.length === 0) {
     if (room.timer) clearTimeout(room.timer);
