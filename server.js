@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { createRoom, joinRoom, leaveRoom, rejoinRoom, getRoomByPlayerId } = require('./room-manager');
 const { startGame, handleAction, handleDisconnect } = require('./game-engine');
+const { handleChatMessage } = require('./chat');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -70,6 +71,16 @@ function handleMessage(ws, playerId, msg) {
       if (result && result.error) {
         ws.send(JSON.stringify({ type: 'error', message: result.error }));
       }
+      break;
+    }
+
+    case 'chat': {
+      const room = getRoomByPlayerId(playerId);
+      if (!room) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Not in a room' }));
+        break;
+      }
+      handleChatMessage(room, playerId, msg.text);
       break;
     }
 

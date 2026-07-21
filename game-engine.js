@@ -2,6 +2,7 @@
 
 const { bestHand, compareHands } = require('./hand-evaluator');
 const { broadcastRoomState } = require('./room-manager');
+const { broadcastSystemMessage } = require('./chat');
 const db = require('./db');
 
 const STARTING_SMALL_BLIND = 10;
@@ -66,6 +67,7 @@ function startGame(room) {
   // Persist session start
   room.sessionId = db.insertSession(room.code, room.players);
 
+  broadcastSystemMessage(room, 'Game started! Hand #1');
   dealHand(room);
   return true;
 }
@@ -501,6 +503,11 @@ function resolveShowdown(room) {
     }
   }
 
+  // System messages for winners
+  for (const w of winners) {
+    broadcastSystemMessage(room, `${w.displayName} wins ${w.potWon} chips with ${w.hand}`);
+  }
+
   broadcastRoomState(room);
 
   // After a delay, start next hand or end game
@@ -520,6 +527,8 @@ function awardPotToLastPlayer(room, winner) {
     db.recordWin(room.sessionId, winner.id, totalPot);
     db.updatePeakChips(room.sessionId, winner.id, winner.chips);
   }
+
+  broadcastSystemMessage(room, `${winner.displayName} wins ${totalPot} chips`);
 
   // Broadcast
   const msg = {
@@ -701,6 +710,8 @@ function handleDisconnect(room, playerId) {
   if (player) {
     player.sittingOut = true;
     player.ws = null;
+
+    broadcastSystemMessage(room, `${player.displayName} disconnected`);
 
     // If it's their turn, auto-fold
     const playerIndex = room.players.indexOf(player);

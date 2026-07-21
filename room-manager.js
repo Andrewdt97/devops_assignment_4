@@ -1,6 +1,7 @@
 'use strict';
 
 const rooms = new Map();
+const { broadcastSystemMessage } = require('./chat');
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -84,6 +85,7 @@ function joinRoom(roomCode, playerId, ws, displayName) {
     isCreator: false,
   });
 
+  broadcastSystemMessage(room, `${displayName} joined the room`);
   broadcastRoomState(room);
   return room;
 }
@@ -91,6 +93,10 @@ function joinRoom(roomCode, playerId, ws, displayName) {
 function leaveRoom(roomCode, playerId) {
   const room = rooms.get(roomCode);
   if (!room) return;
+
+  const leavingPlayer = room.players.find((p) => p.id === playerId)
+    || room.spectators.find((p) => p.id === playerId);
+  const leavingName = leavingPlayer ? leavingPlayer.displayName : 'A player';
 
   room.players = room.players.filter((p) => p.id !== playerId);
   room.spectators = room.spectators.filter((p) => p.id !== playerId);
@@ -101,6 +107,7 @@ function leaveRoom(roomCode, playerId) {
     return;
   }
 
+  broadcastSystemMessage(room, `${leavingName} left the room`);
   broadcastRoomState(room);
 }
 
@@ -127,6 +134,8 @@ function rejoinRoom(roomCode, playerId, ws) {
   player.ws = ws;
   player.sittingOut = false;
   sendFilteredState(room, player);
+
+  broadcastSystemMessage(room, `${player.displayName} reconnected`);
 
   // If it's this player's turn, re-send the yourTurn message so they see action buttons
   const playerIndex = room.players.indexOf(player);

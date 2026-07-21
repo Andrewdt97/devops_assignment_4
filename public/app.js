@@ -42,6 +42,10 @@
     finalStandings: document.getElementById('finalStandings'),
     leaveBtn: document.getElementById('leaveBtn'),
     notification: document.getElementById('notification'),
+    chatPanel: document.getElementById('chatPanel'),
+    chatMessages: document.getElementById('chatMessages'),
+    chatInput: document.getElementById('chatInput'),
+    chatSendBtn: document.getElementById('chatSendBtn'),
   };
 
   // --- WebSocket Connection ---
@@ -128,6 +132,10 @@
         showError(msg.message);
         break;
 
+      case 'chatMessage':
+        appendChatMessage(msg);
+        break;
+
       default:
         console.log('Unknown message:', msg);
     }
@@ -137,6 +145,14 @@
   function showScreen(name) {
     Object.values(screens).forEach((s) => s.classList.add('hidden'));
     if (screens[name]) screens[name].classList.remove('hidden');
+    // Show chat panel in waiting room and game screen, hide otherwise
+    if (name === 'waitingRoom' || name === 'gameScreen') {
+      els.chatPanel.classList.remove('hidden');
+    } else {
+      els.chatPanel.classList.add('hidden');
+      // Clear chat messages when leaving a room
+      els.chatMessages.innerHTML = '';
+    }
   }
 
   // --- Rendering ---
@@ -399,6 +415,31 @@
     return div.innerHTML;
   }
 
+  // --- Chat ---
+  function appendChatMessage(msg) {
+    const div = document.createElement('div');
+    div.classList.add('msg');
+    if (msg.system) {
+      div.classList.add('system');
+      div.textContent = msg.text;
+    } else {
+      const sender = document.createElement('span');
+      sender.classList.add('sender');
+      sender.textContent = msg.from.displayName + ': ';
+      div.appendChild(sender);
+      div.appendChild(document.createTextNode(msg.text));
+    }
+    els.chatMessages.appendChild(div);
+    els.chatMessages.scrollTop = els.chatMessages.scrollHeight;
+  }
+
+  function sendChatMessage() {
+    const text = els.chatInput.value.trim();
+    if (!text) return;
+    send({ type: 'chat', text });
+    els.chatInput.value = '';
+  }
+
   // --- Event Listeners ---
   els.createBtn.addEventListener('click', () => {
     const name = els.displayName.value.trim();
@@ -448,6 +489,12 @@
   });
   els.roomCodeInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') els.joinBtn.click();
+  });
+
+  // Chat event listeners
+  els.chatSendBtn.addEventListener('click', sendChatMessage);
+  els.chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendChatMessage();
   });
 
   // --- Init ---
