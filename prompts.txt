@@ -5,3 +5,5 @@ Design a multiplayer, browser based poker game. There is no technology or framew
 Find any bugs or functional issues with this code base. Fix anything you find.
 
 Implement the chat feature design in /Users/andrewthomas/misc/devops/devops_assignment_4/.agents/planning/2026-07-20-room-chat
+
+Review the last commit and vigorously check for bugs. Fix any that you find.
